@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+/Packages/
+
+# Local agent scratch space and execution reports
+/.ai/
+
+# Editors
+.vscode/
+.idea/
+*.xcodeproj
+*.xcworkspace
