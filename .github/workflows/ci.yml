@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,23 +15,50 @@ permissions:
 
 jobs:
   test:
-    name: Test (${{ matrix.os }}, Swift ${{ matrix.swift }})
+    name: Test (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        swift: ["6.0", "6.1"]
+        # macOS jobs select the Xcode that ships the requested Swift version
+        # instead of installing a swift.org toolchain next to the runner's
+        # system SDK. Mixing an older toolchain with a newer macOS SDK fails
+        # while importing system modules (_Builtin_float, DarwinFoundation),
+        # before any package code compiles.
+        include:
+          - name: ubuntu-latest, Swift 6.0
+            os: ubuntu-latest
+            swift: "6.0"
+            xcode: ""
+          - name: ubuntu-latest, Swift 6.1
+            os: ubuntu-latest
+            swift: "6.1"
+            xcode: ""
+          - name: macos-15, Swift 6.0
+            os: macos-15
+            swift: "6.0"
+            xcode: /Applications/Xcode_16.2.app
+          - name: macos-15, Swift 6.1
+            os: macos-15
+            swift: "6.1"
+            xcode: /Applications/Xcode_16.4.app
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Swift
+      - name: Select Xcode (macOS)
+        if: runner.os == 'macOS'
+        run: sudo xcode-select --switch "${{ matrix.xcode }}"
+
+      - name: Set up Swift (Linux)
+        if: runner.os == 'Linux'
         uses: swift-actions/setup-swift@v2
         with:
           swift-version: ${{ matrix.swift }}
 
-      - name: Show toolchain
-        run: swift --version
+      - name: Show and verify toolchain
+        run: |
+          swift --version
+          swift --version | grep -q "Swift version ${{ matrix.swift }}"
 
       - name: Build library (release, warnings as errors)
         run: swift build -c release -Xswiftc -warnings-as-errors
@@ -40,6 +68,52 @@ jobs:
 
       - name: Run tests (release)
         run: swift test -c release
+
+  coverage:
+    name: Coverage (ubuntu-latest, Swift 6.1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+
+      - name: Run tests with coverage
+        run: swift test --enable-code-coverage
+
+      - name: Enforce library line coverage (>= 90%)
+        run: |
+          COVERAGE_JSON="$(swift test --show-codecov-path)"
+          test -f "$COVERAGE_JSON"
+          python3 - "$COVERAGE_JSON" <<'PY'
+          import json
+          import sys
+
+          threshold = 90.0
+          report = json.load(open(sys.argv[1], encoding="utf-8"))
+          files = [
+              entry
+              for entry in report["data"][0]["files"]
+              if "/Sources/Pikaid/" in entry["filename"]
+          ]
+          if not files:
+              sys.exit("coverage report contains no Sources/Pikaid files")
+
+          covered = sum(entry["summary"]["lines"]["covered"] for entry in files)
+          total = sum(entry["summary"]["lines"]["count"] for entry in files)
+          percent = 100.0 * covered / total
+
+          for entry in sorted(files, key=lambda item: item["filename"]):
+              lines = entry["summary"]["lines"]
+              name = entry["filename"].rsplit("/Sources/Pikaid/", 1)[-1]
+              print(f"{name}: {lines['covered']}/{lines['count']} lines")
+
+          print(f"library lines: {covered}/{total} = {percent:.2f}% (threshold {threshold:.0f}%)")
+          if percent < threshold:
+              sys.exit(f"coverage {percent:.2f}% is below the {threshold:.0f}% threshold")
+          PY
 
   format:
     name: Formatting (advisory)

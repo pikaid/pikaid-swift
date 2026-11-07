@@ -216,7 +216,8 @@ swift format lint --recursive --strict Sources Tests Package.swift
 
 Line coverage of the library sources is **98.6%** (`swift test
 --enable-code-coverage`), with `Pikaid.swift` and `Base36.swift` at or above
-99%.
+99%. CI enforces a **90% library line-coverage floor** on Linux with Swift 6.1;
+the job fails if coverage drops below it.
 
 The suite has been executed on:
 
@@ -225,7 +226,16 @@ The suite has been executed on:
 - Linux `aarch64-unknown-linux-gnu` in a `swift:6.1.3` container (debug and
   release), which also exercises the non-Apple randomness path.
 
-The GitHub Actions matrix runs Swift 6.0 and 6.1 on Ubuntu and macOS.
+The GitHub Actions matrix runs the release build with warnings as errors and the
+debug and release test suites on:
+
+- `ubuntu-latest` with Swift 6.0 and 6.1 (swift.org toolchains), and
+- `macos-15` with the Xcode-bundled Swift 6.0 (`Xcode_16.2`) and 6.1
+  (`Xcode_16.4`) toolchains.
+
+The declared minimum is macOS 13, but the oldest macOS version exercised by this
+repository so far is macOS 15 (the `macos-15` CI image). macOS 13 and 14 remain
+supported by declaration, not verified by CI.
 
 ### Command Line Tools note
 
