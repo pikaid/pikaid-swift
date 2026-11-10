@@ -50,7 +50,9 @@ jobs:
             swift: "6.1"
             xcode: /Applications/Xcode_16.4.app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Select Xcode (macOS)
         if: runner.os == 'macOS'
@@ -58,7 +60,7 @@ jobs:
 
       - name: Set up Swift (Linux)
         if: runner.os == 'Linux'
-        uses: swift-actions/setup-swift@v2
+        uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a
         with:
           swift-version: ${{ matrix.swift }}
 
@@ -80,10 +82,12 @@ jobs:
     name: Conformance (independent oracle)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Set up Swift
-        uses: swift-actions/setup-swift@v2
+        uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a
         with:
           swift-version: "6.1"
 
@@ -116,10 +120,12 @@ jobs:
       SPECS_PACKAGE_REVISION: "1.0.0"
       SPECS_SPEC_REVISION: "1.0.4"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Set up Swift
-        uses: swift-actions/setup-swift@v2
+        uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a
         with:
           swift-version: "6.1"
 
@@ -233,7 +239,7 @@ jobs:
 
       - name: Upload conformance report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: official-conformance-report
           path: ${{ runner.temp }}/conformance-report.json
@@ -243,10 +249,12 @@ jobs:
     name: AddressSanitizer (ubuntu-latest, Swift 6.1)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Set up Swift
-        uses: swift-actions/setup-swift@v2
+        uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a
         with:
           swift-version: "6.1"
 
@@ -264,10 +272,12 @@ jobs:
     name: Coverage (ubuntu-latest, Swift 6.1)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Set up Swift
-        uses: swift-actions/setup-swift@v2
+        uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a
         with:
           swift-version: "6.1"
 
@@ -314,10 +324,12 @@ jobs:
     # build until that policy is decided.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Set up Swift
-        uses: swift-actions/setup-swift@v2
+        uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a
         with:
           swift-version: "6.1"
 
@@ -328,10 +340,12 @@ jobs:
     name: External consumer (packed source archive)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Set up Swift
-        uses: swift-actions/setup-swift@v2
+        uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a
         with:
           swift-version: "6.1"
 
@@ -399,7 +413,9 @@ jobs:
     name: Packaging hygiene
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
 
       - name: Assert no tracked .ai files
         run: |
@@ -473,7 +489,7 @@ jobs:
           fi
 
       - name: Set up Swift
-        uses: swift-actions/setup-swift@v2
+        uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a
         with:
           swift-version: "6.1"
 
