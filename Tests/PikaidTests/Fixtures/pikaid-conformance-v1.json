@@ -1,0 +1,598 @@
+{
+  "meta": {
+    "format": "pikaid-conformance-v1",
+    "spec_revision": "1.0.4",
+    "spec_commit": "17014d76f568c3ac9f9ce2927c1a018fdbc36d1d",
+    "source_fixture": "pikaid/pikaid-php v1.2.0 (e3f843edeb5157a5d2d25196cac0d69580810a95)",
+    "official_fixture_sha256": "b0c9dfdd063613424414fef5c9065fbd2f81d645d0ab42b34e27cde715613500",
+    "official_schema_sha256": "4441d4dbaa6c5450ae9cbfb2438c53bc0421bba2b7fcc9ef9b158e5d1de0759e",
+    "oracle": "Tests/Conformance/oracle.py",
+    "oracle_description": "Pure-Python big-integer reference implementation. It does not import or execute the Swift sources under test.",
+    "generated_by": "python3 Tests/Conformance/oracle.py --write",
+    "constants": {
+      "string_length": 26,
+      "binary_length": 17,
+      "timestamp_chars": 7,
+      "randomness_chars": 19,
+      "randomness_bytes": 12,
+      "randomness_bits": 96,
+      "base": 36,
+      "maximum_timestamp": 78364164095,
+      "maximum_entropy_hex": "ffffffffffffffffffffffff"
+    },
+    "notes": [
+      "Seven Base36 timestamp digits cannot exceed 36^7 - 1, so timestamp overflow is only reachable through the binary form.",
+      "isWellFormed is shape-only: it is true for any 26 ASCII Base36 characters, even when randomness exceeds 96 bits.",
+      "Same-second order follows unsigned randomness, not generation order."
+    ]
+  },
+  "valid": [
+    {
+      "name": "all-zero",
+      "timestamp": 0,
+      "entropy_hex": "000000000000000000000000",
+      "id": "00000000000000000000000000",
+      "bin_hex": "0000000000000000000000000000000000"
+    },
+    {
+      "name": "timestamp-1-entropy-1",
+      "timestamp": 1,
+      "entropy_hex": "000000000000000000000001",
+      "id": "00000010000000000000000001",
+      "bin_hex": "0000000001000000000000000000000001"
+    },
+    {
+      "name": "max-values",
+      "timestamp": 78364164095,
+      "entropy_hex": "ffffffffffffffffffffffff",
+      "id": "zzzzzzz7oiylpimjg5u2ca1ypr",
+      "bin_hex": "123ede3fffffffffffffffffffffffffff"
+    },
+    {
+      "name": "official-sample-1700000000",
+      "timestamp": 1700000000,
+      "entropy_hex": "00112233445566778899aabb",
+      "id": "0s44we8002loz3po6mcf6vsn23",
+      "bin_hex": "006553f10000112233445566778899aabb"
+    },
+    {
+      "name": "timestamp-zero-max-entropy",
+      "timestamp": 0,
+      "entropy_hex": "ffffffffffffffffffffffff",
+      "id": "00000007oiylpimjg5u2ca1ypr",
+      "bin_hex": "0000000000ffffffffffffffffffffffff"
+    },
+    {
+      "name": "entropy-2^95",
+      "timestamp": 0,
+      "entropy_hex": "800000000000000000000000",
+      "id": "00000003u9haurb9q2x1650zcw",
+      "bin_hex": "0000000000800000000000000000000000"
+    },
+    {
+      "name": "maximum-timestamp-zero-entropy",
+      "timestamp": 78364164095,
+      "entropy_hex": "000000000000000000000000",
+      "id": "zzzzzzz0000000000000000000",
+      "bin_hex": "123ede3fff000000000000000000000000"
+    },
+    {
+      "name": "timestamp-max-minus-one",
+      "timestamp": 78364164094,
+      "entropy_hex": "ffffffffffffffffffffffff",
+      "id": "zzzzzzy7oiylpimjg5u2ca1ypr",
+      "bin_hex": "123ede3ffeffffffffffffffffffffffff"
+    },
+    {
+      "name": "timestamp-36^2-minus-one",
+      "timestamp": 1295,
+      "entropy_hex": "000000000000000000000000",
+      "id": "00000zz0000000000000000000",
+      "bin_hex": "000000050f000000000000000000000000"
+    },
+    {
+      "name": "timestamp-36^2",
+      "timestamp": 1296,
+      "entropy_hex": "000000000000000000000000",
+      "id": "00001000000000000000000000",
+      "bin_hex": "0000000510000000000000000000000000"
+    },
+    {
+      "name": "timestamp-2^31-minus-one",
+      "timestamp": 2147483647,
+      "entropy_hex": "7f7f7f7f7f7f7f7f7f7f7f7f",
+      "id": "0zik0zj3tpyljhgqcfbv8ik6f3",
+      "bin_hex": "007fffffff7f7f7f7f7f7f7f7f7f7f7f7f"
+    },
+    {
+      "name": "timestamp-2^32-minus-one",
+      "timestamp": 4294967295,
+      "entropy_hex": "000000000000000000000000",
+      "id": "1z141z30000000000000000000",
+      "bin_hex": "00ffffffff000000000000000000000000"
+    },
+    {
+      "name": "timestamp-2^32",
+      "timestamp": 4294967296,
+      "entropy_hex": "000000000000000000000000",
+      "id": "1z141z40000000000000000000",
+      "bin_hex": "0100000000000000000000000000000000"
+    },
+    {
+      "name": "timestamp-36^6-minus-one",
+      "timestamp": 2176782335,
+      "entropy_hex": "000000000000000000000000",
+      "id": "0zzzzzz0000000000000000000",
+      "bin_hex": "0081bf0fff000000000000000000000000"
+    },
+    {
+      "name": "timestamp-36^6",
+      "timestamp": 2176782336,
+      "entropy_hex": "000000000000000000000000",
+      "id": "10000000000000000000000000",
+      "bin_hex": "0081bf1000000000000000000000000000"
+    },
+    {
+      "name": "entropy-leading-zeros",
+      "timestamp": 1234567890,
+      "entropy_hex": "00000000000000000000000a",
+      "id": "0kf12oi000000000000000000a",
+      "bin_hex": "00499602d200000000000000000000000a"
+    },
+    {
+      "name": "entropy-leading-zero-byte",
+      "timestamp": 42,
+      "entropy_hex": "00ff000000000000000000ff",
+      "id": "0000016012qg4lmt9jrjm6v6kf",
+      "bin_hex": "000000002a00ff000000000000000000ff"
+    },
+    {
+      "name": "entropy-max-minus-one",
+      "timestamp": 1000,
+      "entropy_hex": "fffffffffffffffffffffffe",
+      "id": "00000rs7oiylpimjg5u2ca1ypq",
+      "bin_hex": "00000003e8fffffffffffffffffffffffe"
+    },
+    {
+      "name": "timestamp-one-max-entropy",
+      "timestamp": 1,
+      "entropy_hex": "ffffffffffffffffffffffff",
+      "id": "00000017oiylpimjg5u2ca1ypr",
+      "bin_hex": "0000000001ffffffffffffffffffffffff"
+    },
+    {
+      "name": "real-world-week",
+      "timestamp": 604800,
+      "entropy_hex": "00ff00ff00ff00ff00ff00ff",
+      "id": "000cyo0012qgw6dj9l6a3eqwhr",
+      "bin_hex": "0000093a8000ff00ff00ff00ff00ff00ff"
+    },
+    {
+      "name": "ascending-0-timestamp-10",
+      "timestamp": 10,
+      "entropy_hex": "fedcba9876543210fedcba98",
+      "id": "000000a7napt4ri4blyy714788",
+      "bin_hex": "000000000afedcba9876543210fedcba98"
+    },
+    {
+      "name": "ascending-1-timestamp-11",
+      "timestamp": 11,
+      "entropy_hex": "fedcba9876543210fedcba98",
+      "id": "000000b7napt4ri4blyy714788",
+      "bin_hex": "000000000bfedcba9876543210fedcba98"
+    },
+    {
+      "name": "ascending-2-timestamp-12",
+      "timestamp": 12,
+      "entropy_hex": "fedcba9876543210fedcba98",
+      "id": "000000c7napt4ri4blyy714788",
+      "bin_hex": "000000000cfedcba9876543210fedcba98"
+    },
+    {
+      "name": "ascending-3-timestamp-13",
+      "timestamp": 13,
+      "entropy_hex": "fedcba9876543210fedcba98",
+      "id": "000000d7napt4ri4blyy714788",
+      "bin_hex": "000000000dfedcba9876543210fedcba98"
+    },
+    {
+      "name": "ascending-4-timestamp-14",
+      "timestamp": 14,
+      "entropy_hex": "fedcba9876543210fedcba98",
+      "id": "000000e7napt4ri4blyy714788",
+      "bin_hex": "000000000efedcba9876543210fedcba98"
+    },
+    {
+      "name": "descending-0-timestamp-24",
+      "timestamp": 24,
+      "entropy_hex": "0123456789abcdef01234567",
+      "id": "000000o0188skr4f4jv458xrhj",
+      "bin_hex": "00000000180123456789abcdef01234567"
+    },
+    {
+      "name": "descending-1-timestamp-23",
+      "timestamp": 23,
+      "entropy_hex": "0123456789abcdef01234567",
+      "id": "000000n0188skr4f4jv458xrhj",
+      "bin_hex": "00000000170123456789abcdef01234567"
+    },
+    {
+      "name": "descending-2-timestamp-22",
+      "timestamp": 22,
+      "entropy_hex": "0123456789abcdef01234567",
+      "id": "000000m0188skr4f4jv458xrhj",
+      "bin_hex": "00000000160123456789abcdef01234567"
+    },
+    {
+      "name": "descending-3-timestamp-21",
+      "timestamp": 21,
+      "entropy_hex": "0123456789abcdef01234567",
+      "id": "000000l0188skr4f4jv458xrhj",
+      "bin_hex": "00000000150123456789abcdef01234567"
+    },
+    {
+      "name": "descending-4-timestamp-20",
+      "timestamp": 20,
+      "entropy_hex": "0123456789abcdef01234567",
+      "id": "000000k0188skr4f4jv458xrhj",
+      "bin_hex": "00000000140123456789abcdef01234567"
+    },
+    {
+      "name": "seeded-0",
+      "timestamp": 51476155848,
+      "entropy_hex": "a314fb7dd713ea1b1145a12d",
+      "id": "nnbko204w5p47a97g2we41svu5",
+      "bin_hex": "0bfc37cdc8a314fb7dd713ea1b1145a12d"
+    },
+    {
+      "name": "seeded-1",
+      "timestamp": 56422584636,
+      "entropy_hex": "c78fa32763144c2eb4d8bb6f",
+      "id": "px4jsxo5zk8u4lwqz0kjh4v3hr",
+      "bin_hex": "0d230c513cc78fa32763144c2eb4d8bb6f"
+    },
+    {
+      "name": "seeded-2",
+      "timestamp": 13360862076,
+      "entropy_hex": "507e891156ad6de8adea83c6",
+      "id": "64ypn5o2ey59gh79o88jdw5fwm",
+      "bin_hex": "031c5e937c507e891156ad6de8adea83c6"
+    },
+    {
+      "name": "seeded-3",
+      "timestamp": 41544730560,
+      "entropy_hex": "61794938d14722706681b363",
+      "id": "j32nr9c2xaf4w46kfuutv659wj",
+      "bin_hex": "09ac4247c061794938d14722706681b363"
+    },
+    {
+      "name": "seeded-4",
+      "timestamp": 47135638816,
+      "entropy_hex": "89fbccfab317cbaf336a9e27",
+      "id": "lnjcbog451pi2rzloaamk2klyf",
+      "bin_hex": "0af980c52089fbccfab317cbaf336a9e27"
+    },
+    {
+      "name": "seeded-5",
+      "timestamp": 63946889824,
+      "entropy_hex": "f7deb98d521a901d07ae6a92",
+      "id": "tdkbrz47fqtb4a8j2t8hlpa2z6",
+      "bin_hex": "0ee3881a60f7deb98d521a901d07ae6a92"
+    },
+    {
+      "name": "seeded-6",
+      "timestamp": 77511062422,
+      "entropy_hex": "62b989e45079d416b76c83a4",
+      "id": "zlw32ja2yn2ev10qys34mk9m04",
+      "bin_hex": "120c04f39662b989e45079d416b76c83a4"
+    },
+    {
+      "name": "seeded-7",
+      "timestamp": 3391839175,
+      "entropy_hex": "1f5cc40e08abb221cbb097e4",
+      "id": "1k3evuv0xvkown76oo3j34zf8k",
+      "bin_hex": "00ca2b5bc71f5cc40e08abb221cbb097e4"
+    }
+  ],
+  "ordering": [
+    "00000000000000000000000000",
+    "00000003u9haurb9q2x1650zcw",
+    "00000007oiylpimjg5u2ca1ypr",
+    "00000010000000000000000001",
+    "00000017oiylpimjg5u2ca1ypr",
+    "000000a7napt4ri4blyy714788",
+    "000000b7napt4ri4blyy714788",
+    "000000c7napt4ri4blyy714788",
+    "000000d7napt4ri4blyy714788",
+    "000000e7napt4ri4blyy714788",
+    "000000k0188skr4f4jv458xrhj",
+    "000000l0188skr4f4jv458xrhj",
+    "000000m0188skr4f4jv458xrhj",
+    "000000n0188skr4f4jv458xrhj",
+    "000000o0188skr4f4jv458xrhj",
+    "0000016012qg4lmt9jrjm6v6kf",
+    "00000rs7oiylpimjg5u2ca1ypq",
+    "00000zz0000000000000000000",
+    "00001000000000000000000000",
+    "000cyo0012qgw6dj9l6a3eqwhr",
+    "0kf12oi000000000000000000a",
+    "0s44we8002loz3po6mcf6vsn23",
+    "0zik0zj3tpyljhgqcfbv8ik6f3",
+    "0zzzzzz0000000000000000000",
+    "10000000000000000000000000",
+    "1k3evuv0xvkown76oo3j34zf8k",
+    "1z141z30000000000000000000",
+    "1z141z40000000000000000000",
+    "64ypn5o2ey59gh79o88jdw5fwm",
+    "j32nr9c2xaf4w46kfuutv659wj",
+    "lnjcbog451pi2rzloaamk2klyf",
+    "nnbko204w5p47a97g2we41svu5",
+    "px4jsxo5zk8u4lwqz0kjh4v3hr",
+    "tdkbrz47fqtb4a8j2t8hlpa2z6",
+    "zlw32ja2yn2ev10qys34mk9m04",
+    "zzzzzzy7oiylpimjg5u2ca1ypr",
+    "zzzzzzz0000000000000000000",
+    "zzzzzzz7oiylpimjg5u2ca1ypr"
+  ],
+  "invalid_string": [
+    {
+      "name": "empty",
+      "id": "",
+      "utf8_hex": "",
+      "well_formed": false,
+      "expected_error": "invalidStringLength"
+    },
+    {
+      "name": "length-1",
+      "id": "0",
+      "utf8_hex": "30",
+      "well_formed": false,
+      "expected_error": "invalidStringLength"
+    },
+    {
+      "name": "length-25",
+      "id": "0000000000000000000000000",
+      "utf8_hex": "30303030303030303030303030303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidStringLength"
+    },
+    {
+      "name": "length-27",
+      "id": "000000000000000000000000000",
+      "utf8_hex": "303030303030303030303030303030303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidStringLength"
+    },
+    {
+      "name": "length-100",
+      "id": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "utf8_hex": "30303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidStringLength"
+    },
+    {
+      "name": "uppercase-at-6",
+      "id": "000000A0000000000000000000",
+      "utf8_hex": "3030303030304130303030303030303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "uppercase-at-25",
+      "id": "0000000000000000000000000Z",
+      "utf8_hex": "303030303030303030303030303030303030303030303030305a",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "dash-at-6",
+      "id": "000000-0000000000000000000",
+      "utf8_hex": "3030303030302d30303030303030303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "underscore-at-6",
+      "id": "000000_0000000000000000000",
+      "utf8_hex": "3030303030305f30303030303030303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "space-at-25",
+      "id": "0000000000000000000000000 ",
+      "utf8_hex": "3030303030303030303030303030303030303030303030303020",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "exclamation-at-12",
+      "id": "000000000000!0000000000000",
+      "utf8_hex": "3030303030303030303030302130303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "dot-at-12",
+      "id": "000000000000.0000000000000",
+      "utf8_hex": "3030303030303030303030302e30303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "slash-at-12",
+      "id": "000000000000/0000000000000",
+      "utf8_hex": "3030303030303030303030302f30303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "tilde-at-12",
+      "id": "000000000000~0000000000000",
+      "utf8_hex": "3030303030303030303030307e30303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "plus-at-12",
+      "id": "000000000000+0000000000000",
+      "utf8_hex": "3030303030303030303030302b30303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "colon-at-12",
+      "id": "000000000000:0000000000000",
+      "utf8_hex": "3030303030303030303030303a30303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "nul-at-12",
+      "id": "000000000000\u00000000000000000",
+      "utf8_hex": "3030303030303030303030300030303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "tab-at-12",
+      "id": "000000000000\t0000000000000",
+      "utf8_hex": "3030303030303030303030300930303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "carriage-return-at-12",
+      "id": "000000000000\r0000000000000",
+      "utf8_hex": "3030303030303030303030300d30303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "line-feed-at-12",
+      "id": "000000000000\n0000000000000",
+      "utf8_hex": "3030303030303030303030300a30303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "crlf-at-11",
+      "id": "00000000000\r\n0000000000000",
+      "utf8_hex": "30303030303030303030300d0a30303030303030303030303030",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "non-ascii-e-acute-2-byte",
+      "id": "000000000000000000000000\u00e9",
+      "utf8_hex": "303030303030303030303030303030303030303030303030c3a9",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "non-ascii-e-acute-27-bytes",
+      "id": "0000000000000000000000000\u00e9",
+      "utf8_hex": "30303030303030303030303030303030303030303030303030c3a9",
+      "well_formed": false,
+      "expected_error": "invalidStringLength"
+    },
+    {
+      "name": "zero-width-space-3-byte",
+      "id": "00000000000000000000000\u200b",
+      "utf8_hex": "3030303030303030303030303030303030303030303030e2808b",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "zero-width-joiner-3-byte",
+      "id": "00000000000000000000000\u200d",
+      "utf8_hex": "3030303030303030303030303030303030303030303030e2808d",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "byte-order-mark-3-byte",
+      "id": "00000000000000000000000\ufeff",
+      "utf8_hex": "3030303030303030303030303030303030303030303030efbbbf",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "fullwidth-digit-zero-3-byte",
+      "id": "00000000000000000000000\uff10",
+      "utf8_hex": "3030303030303030303030303030303030303030303030efbc90",
+      "well_formed": false,
+      "expected_error": "invalidCharacter"
+    },
+    {
+      "name": "entropy-2^96",
+      "id": "00000007oiylpimjg5u2ca1yps",
+      "utf8_hex": "30303030303030376f69796c70696d6a67357532636131797073",
+      "well_formed": true,
+      "expected_error": "randomnessOverflow"
+    },
+    {
+      "name": "entropy-2^96-plus-one",
+      "id": "00000007oiylpimjg5u2ca1ypt",
+      "utf8_hex": "30303030303030376f69796c70696d6a67357532636131797074",
+      "well_formed": true,
+      "expected_error": "randomnessOverflow"
+    },
+    {
+      "name": "entropy-36^19-minus-1",
+      "id": "0000000zzzzzzzzzzzzzzzzzzz",
+      "utf8_hex": "303030303030307a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a",
+      "well_formed": true,
+      "expected_error": "randomnessOverflow"
+    },
+    {
+      "name": "entropy-leading-8-overflow",
+      "id": "00000008000000000000000000",
+      "utf8_hex": "3030303030303038303030303030303030303030303030303030",
+      "well_formed": true,
+      "expected_error": "randomnessOverflow"
+    }
+  ],
+  "invalid_binary": [
+    {
+      "name": "length-0",
+      "bin_hex": "",
+      "expected_error": "invalidBinaryLength"
+    },
+    {
+      "name": "length-16",
+      "bin_hex": "00000000000000000000000000000000",
+      "expected_error": "invalidBinaryLength"
+    },
+    {
+      "name": "length-18",
+      "bin_hex": "000000000000000000000000000000000000",
+      "expected_error": "invalidBinaryLength"
+    },
+    {
+      "name": "length-34",
+      "bin_hex": "00000000000000000000000000000000000000000000000000000000000000000000",
+      "expected_error": "invalidBinaryLength"
+    },
+    {
+      "name": "timestamp-max-plus-one",
+      "bin_hex": "123ede4000000000000000000000000000",
+      "expected_error": "timestampOverflow"
+    },
+    {
+      "name": "timestamp-2^39",
+      "bin_hex": "8000000000000000000000000000000000",
+      "expected_error": "timestampOverflow"
+    },
+    {
+      "name": "timestamp-2^40-minus-2",
+      "bin_hex": "fffffffffe000000000000000000000000",
+      "expected_error": "timestampOverflow"
+    },
+    {
+      "name": "timestamp-2^40-minus-1",
+      "bin_hex": "ffffffffff000000000000000000000000",
+      "expected_error": "timestampOverflow"
+    }
+  ]
+}

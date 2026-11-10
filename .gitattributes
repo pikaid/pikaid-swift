@@ -1,0 +1,12 @@
+# Normalize all repository text to LF so fixture digests and the pinned
+# conformance table stay stable on Windows checkouts.
+* text=auto eol=lf
+
+*.swift text eol=lf
+*.json text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.gitignore text eol=lf
+*.gitattributes text eol=lf

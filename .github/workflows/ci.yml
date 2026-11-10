@@ -1,0 +1,532 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS jobs select the Xcode that ships the requested Swift version
+        # instead of installing a swift.org toolchain next to the runner's
+        # system SDK. Mixing an older toolchain with a newer macOS SDK fails
+        # while importing system modules (_Builtin_float, DarwinFoundation),
+        # before any package code compiles.
+        include:
+          - name: ubuntu-latest, Swift 6.0
+            os: ubuntu-latest
+            swift: "6.0"
+            xcode: ""
+          - name: ubuntu-latest, Swift 6.1
+            os: ubuntu-latest
+            swift: "6.1"
+            xcode: ""
+          - name: macos-15, Swift 6.0
+            os: macos-15
+            swift: "6.0"
+            xcode: /Applications/Xcode_16.2.app
+          - name: macos-15, Swift 6.1
+            os: macos-15
+            swift: "6.1"
+            xcode: /Applications/Xcode_16.4.app
+          # macOS 13 and 14 runner images are retired on GitHub Actions
+          # (macOS 14 retired 2026-11-02), so macOS 15 x64 is the oldest
+          # supported Intel image available for runtime verification.
+          - name: macos-15-intel, Swift 6.1
+            os: macos-15-intel
+            swift: "6.1"
+            xcode: /Applications/Xcode_16.4.app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode (macOS)
+        if: runner.os == 'macOS'
+        run: sudo xcode-select --switch "${{ matrix.xcode }}"
+
+      - name: Set up Swift (Linux)
+        if: runner.os == 'Linux'
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: ${{ matrix.swift }}
+
+      - name: Show and verify toolchain
+        run: |
+          swift --version
+          swift --version | grep -q "Swift version ${{ matrix.swift }}"
+
+      - name: Build library (release, warnings as errors)
+        run: swift build -c release -Xswiftc -warnings-as-errors
+
+      - name: Run tests (debug)
+        run: swift test
+
+      - name: Run tests (release)
+        run: swift test -c release
+
+  conformance:
+    name: Conformance (independent oracle)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+
+      - name: Verify pinned official fixture digests
+        run: |
+          printf '%s  %s\n' \
+            'b0c9dfdd063613424414fef5c9065fbd2f81d645d0ab42b34e27cde715613500' \
+            'Tests/PikaidTests/Fixtures/pikaid-v1.json' | sha256sum --check -
+          printf '%s  %s\n' \
+            '4441d4dbaa6c5450ae9cbfb2438c53bc0421bba2b7fcc9ef9b158e5d1de0759e' \
+            'Tests/PikaidTests/Fixtures/pikaid-v1.schema.json' | sha256sum --check -
+
+      - name: Verify conformance table against the independent Python oracle
+        run: python3 Tests/Conformance/oracle.py --check
+
+      - name: Run the pinned conformance table through the Swift API
+        run: swift test --filter ConformanceTableTests
+
+      - name: Run the README examples through the public API
+        run: swift test --filter READMEExamplesTests
+
+  official-conformance:
+    name: Official PikaID conformance suite (ubuntu-latest, Swift 6.1)
+    runs-on: ubuntu-latest
+    env:
+      # Immutable upstream revision of pikaid/pikaid-specs. Never replace this
+      # with a mutable branch name: the suite must be fetched by exact commit.
+      SPECS_REPOSITORY: https://github.com/pikaid/pikaid-specs.git
+      SPECS_COMMIT: 059780cc0e5b113443812720d95c630649bf3aa3
+      SPECS_PACKAGE_REVISION: "1.0.0"
+      SPECS_SPEC_REVISION: "1.0.4"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+
+      - name: Fetch the official suite by exact commit
+        run: |
+          set -euo pipefail
+          suite="$RUNNER_TEMP/pikaid-specs"
+          rm -rf "$suite"
+          git init --quiet "$suite"
+          git -C "$suite" remote add origin "$SPECS_REPOSITORY"
+          # Prefer a direct commit fetch. Fall back to full branch history if the
+          # server declines an unadvertised object; the resolved SHA is verified
+          # either way before anything is trusted.
+          if ! git -C "$suite" fetch --quiet --depth 1 origin "$SPECS_COMMIT"; then
+            git -C "$suite" fetch --quiet --no-tags origin \
+              '+refs/heads/*:refs/remotes/origin/*'
+            git -C "$suite" checkout --quiet --detach "$SPECS_COMMIT"
+          else
+            git -C "$suite" checkout --quiet --detach FETCH_HEAD
+          fi
+          resolved="$(git -C "$suite" rev-parse HEAD)"
+          printf 'requested %s\nresolved  %s\n' "$SPECS_COMMIT" "$resolved"
+          test "$resolved" = "$SPECS_COMMIT"
+          test -z "$(git -C "$suite" status --porcelain)"
+
+      - name: Verify fixture integrity, schema, and revisions
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet --upgrade pip
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet \
+            -r "$RUNNER_TEMP/pikaid-specs/conformance/tools/requirements.txt"
+          cd "$RUNNER_TEMP/pikaid-specs/conformance"
+          "$RUNNER_TEMP/venv/bin/python" tools/verify_vectors.py \
+            --expect-status OFFICIAL \
+            --expect-package-revision "$SPECS_PACKAGE_REVISION" \
+            --expect-spec-revision "$SPECS_SPEC_REVISION"
+
+      - name: Run the suite's own tests and independent Node oracle
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/pikaid-specs/conformance"
+          "$RUNNER_TEMP/venv/bin/python" -m unittest discover -s tools/tests -v
+          node tools/verify_oracle_node.mjs
+
+      - name: Build the test-only JSONL adapter (release, warnings as errors)
+        run: |
+          set -euo pipefail
+          # The adapter is a separate test-only package so the production
+          # manifest stays free of executable or test-only dependencies.
+          swift build --package-path Tests/ConformanceAdapter \
+            -c release -Xswiftc -warnings-as-errors
+
+      - name: Run the official adapter suite
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/pikaid-specs/conformance"
+          "$RUNNER_TEMP/venv/bin/python" tools/run_adapter.py \
+            --automated-only \
+            --report-json "$RUNNER_TEMP/conformance-report.json" \
+            -- "$GITHUB_WORKSPACE/Tests/ConformanceAdapter/.build/release/PikaidConformanceAdapter"
+
+      - name: Assert report counts and audit obligations
+        run: |
+          set -euo pipefail
+          python3 - "$RUNNER_TEMP/conformance-report.json" <<'PY'
+          import json
+          import sys
+
+          report = json.load(open(sys.argv[1], encoding="utf-8"))
+          assert report["status"] == "AUTOMATED_PASS_AUDIT_NOT_PERFORMED", report["status"]
+          assert report["exit_code"] == 0
+          assert report["certification"] == "NOT_A_CONFORMANCE_CERTIFICATION"
+          assert report["automated_passed"] is True
+          assert report["errors"] == [], report["errors"]
+          assert report["fatal"] is None
+
+          expected = {
+              "valid": 596,
+              "invalid-string": 258,
+              "invalid-binary": 33,
+              "ordering": 186,
+              "generation": 12,
+          }
+          for suite, total in expected.items():
+              counts = report["counts"][suite]
+              assert counts == {"passed": total, "failed": 0, "not_applicable": 0}, (
+                  suite,
+                  counts,
+              )
+          properties = report["counts"]["properties"]
+          assert properties == {"passed": 13, "failed": 0, "not_applicable": 2}, properties
+
+          freshness = report["generation_freshness"]
+          assert freshness["duplicate_values"] == 0, freshness
+          assert freshness["distinct"] >= freshness["minimum_required"], freshness
+
+          # Only the two manual CSPRNG audit obligations may remain. They are
+          # documented as manual evidence, never silently converted to a pass.
+          outstanding = sorted(report["outstanding_audits"])
+          assert outstanding == [
+              "P-GENERATE-RNG-FAILURE",
+              "P-GENERATE-RNG-SOURCE",
+          ], outstanding
+          assert all(
+              audit["status"] == "MANUAL_EVIDENCE_REQUIRED"
+              for audit in report["audits"]
+          )
+          print("official conformance report asserted:", json.dumps(report["counts"]))
+          PY
+
+      - name: Upload conformance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-conformance-report
+          path: ${{ runner.temp }}/conformance-report.json
+          if-no-files-found: error
+
+  sanitizers:
+    name: AddressSanitizer (ubuntu-latest, Swift 6.1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+
+      - name: Run tests under AddressSanitizer
+        run: swift test --sanitize=address
+
+  coverage:
+    name: Coverage (ubuntu-latest, Swift 6.1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+
+      - name: Run tests with coverage
+        run: swift test --enable-code-coverage
+
+      - name: Enforce library line coverage (>= 90%)
+        run: |
+          COVERAGE_JSON="$(swift test --show-codecov-path)"
+          test -f "$COVERAGE_JSON"
+          python3 - "$COVERAGE_JSON" <<'PY'
+          import json
+          import sys
+
+          threshold = 90.0
+          report = json.load(open(sys.argv[1], encoding="utf-8"))
+          files = [
+              entry
+              for entry in report["data"][0]["files"]
+              if "/Sources/Pikaid/" in entry["filename"]
+          ]
+          if not files:
+              sys.exit("coverage report contains no Sources/Pikaid files")
+
+          covered = sum(entry["summary"]["lines"]["covered"] for entry in files)
+          total = sum(entry["summary"]["lines"]["count"] for entry in files)
+          percent = 100.0 * covered / total
+
+          for entry in sorted(files, key=lambda item: item["filename"]):
+              lines = entry["summary"]["lines"]
+              name = entry["filename"].rsplit("/Sources/Pikaid/", 1)[-1]
+              print(f"{name}: {lines['covered']}/{lines['count']} lines")
+
+          print(f"library lines: {covered}/{total} = {percent:.2f}% (threshold {threshold:.0f}%)")
+          if percent < threshold:
+              sys.exit(f"coverage {percent:.2f}% is below the {threshold:.0f}% threshold")
+          PY
+
+  format:
+    name: Formatting (advisory)
+    runs-on: ubuntu-latest
+    # swift-format rules change between toolchain releases, and the repository
+    # does not pin a formatter version yet. Report drift without blocking the
+    # build until that policy is decided.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+
+      - name: Lint formatting
+        run: swift format lint --recursive --strict Sources Tests Package.swift
+
+  consumer:
+    name: External consumer (packed source archive)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+
+      - name: Build the publishable source archive
+        run: swift package archive-source --output "$RUNNER_TEMP/pikaid-swift.zip"
+
+      - name: Consume the packed artifact from outside the checkout
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/packed" "$RUNNER_TEMP/consumer/Sources/consumer"
+          unzip -q "$RUNNER_TEMP/pikaid-swift.zip" -d "$RUNNER_TEMP/packed"
+          PACKAGE_DIR="$(cd "$RUNNER_TEMP/packed/pikaid-swift" && pwd)"
+          test -f "$PACKAGE_DIR/Package.swift"
+
+          cat > "$RUNNER_TEMP/consumer/Package.swift" <<EOF
+          // swift-tools-version: 6.0
+          import PackageDescription
+
+          let package = Package(
+            name: "Consumer",
+            platforms: [.macOS(.v13)],
+            dependencies: [.package(path: "$PACKAGE_DIR")],
+            targets: [
+              .executableTarget(
+                name: "consumer",
+                dependencies: [.product(name: "Pikaid", package: "pikaid-swift")]
+              )
+            ]
+          )
+          EOF
+
+          cat > "$RUNNER_TEMP/consumer/Sources/consumer/main.swift" <<'EOF'
+          import Foundation
+          import Pikaid
+
+          let sample = try Pikaid(string: "0s44we8002loz3po6mcf6vsn23")
+          precondition(sample.timestamp == 1_700_000_000)
+          precondition(sample.string == "0s44we8002loz3po6mcf6vsn23")
+          let reserialized = try Pikaid(binary: sample.binary)
+          precondition(reserialized == sample)
+          precondition(Pikaid.isValid(sample.string))
+          precondition(!Pikaid.isValid("000000A0000000000000000000"))
+          precondition(Pikaid.isWellFormed("0000000zzzzzzzzzzzzzzzzzzz"))
+          precondition(!Pikaid.isValid("0000000zzzzzzzzzzzzzzzzzzz"))
+
+          let generated = try Pikaid.generateBinary()
+          precondition(generated.count == 17)
+          let decoded = try Pikaid(binary: generated)
+          precondition(decoded.binary == generated)
+
+          let encoded = try JSONEncoder().encode(sample)
+          precondition(
+            String(decoding: encoded, as: UTF8.self) == "\"\(sample.string)\""
+          )
+          print("external-consumer-ok \(sample.string)")
+          EOF
+
+          cd "$RUNNER_TEMP/consumer"
+          swift run --configuration release consumer
+          # Prove the consumer really resolved the packed directory, not a
+          # checkout of this repository.
+          test -f "$PACKAGE_DIR/Sources/Pikaid/Pikaid.swift"
+
+  hygiene:
+    name: Packaging hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assert no tracked .ai files
+        run: |
+          tracked="$(git ls-files -- .ai)"
+          if [ -n "$tracked" ]; then
+            echo "::error::.ai files must stay local-only but are tracked:"
+            printf '%s\n' "$tracked"
+            exit 1
+          fi
+
+      - name: Assert root .ai ignore rule
+        run: |
+          # `git check-ignore -v` prints "<source>:<line>:<pattern>\t<pathname>".
+          # Compare the parsed pattern field exactly instead of matching a
+          # substring, so the rule really is the explicit root `/.ai/` entry.
+          match="$(git check-ignore -v --no-index .ai/reports/probe.md || true)"
+          printf '%s\n' "$match"
+          fields="$(printf '%s\n' "$match" | awk -F'\t' 'NR == 1 { print $1 }')"
+          source_file="$(printf '%s\n' "$fields" | cut -d: -f1)"
+          pattern="$(printf '%s\n' "$fields" | cut -d: -f3-)"
+          if [ "$source_file" != ".gitignore" ] || [ "$pattern" != "/.ai/" ]; then
+            echo "::error::.ai is not matched by the explicit root /.ai/ ignore rule (source='$source_file' pattern='$pattern')"
+            exit 1
+          fi
+          # Guard against broad root hidden-file patterns (`.*`, `/.??*`) that
+          # would also hide legitimate root dotfiles such as .spi.yml.
+          if git check-ignore -q --no-index .spi.yml; then
+            echo "::error::.gitignore hides legitimate root dotfiles"
+            exit 1
+          fi
+
+      - name: Assert checked-in text uses LF and is normalized
+        run: |
+          test -f .gitattributes
+          grep -q '^\* text=auto eol=lf$' .gitattributes
+          python3 - <<'PY'
+          import pathlib
+          import subprocess
+          import sys
+
+          paths = subprocess.check_output(
+              ["git", "ls-files", "-z"], text=True
+          ).split("\0")
+          bad = []
+          for path in paths:
+              if not path:
+                  continue
+              data = pathlib.Path(path).read_bytes()
+              if b"\0" in data:
+                  continue
+              if b"\r" in data:
+                  bad.append(path)
+          if bad:
+              print("::error::tracked text files contain CR bytes:")
+              for path in bad:
+                  print(path)
+              sys.exit(1)
+          print(f"LF check passed for {len([p for p in paths if p])} tracked files")
+          PY
+
+      - name: Assert no local paths, credentials, or baked toolchain paths
+        run: |
+          if git grep -n -I -E '/Users/|TOHRU_DRIVE_ROOT|BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}' -- \
+              ':!LICENSE' ':!.github/workflows/ci.yml'; then
+            echo "::error::tracked files contain local paths or credential-like material"
+            exit 1
+          fi
+          if git grep -n -I -- 'plugin-path' -- Package.swift; then
+            echo "::error::Package.swift bakes a Command Line Tools plugin path"
+            exit 1
+          fi
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+
+      - name: Assert source archive excludes local artifacts
+        run: |
+          archive="$RUNNER_TEMP/pikaid-swift.zip"
+          swift package archive-source --output "$archive"
+          entries="$(unzip -Z1 "$archive")"
+          printf '%s\n' "$entries" | sed -n '1,12p'
+          if printf '%s\n' "$entries" | grep -E '(^|/)\.ai(/|$)'; then
+            echo "::error::source archive contains .ai entries"
+            exit 1
+          fi
+          if printf '%s\n' "$entries" | grep -E '(^|/)\.build(/|$)|(^|/)\.DS_Store$|(^|/)opencode\.jsonc$'; then
+            echo "::error::source archive contains local workspace artifacts"
+            exit 1
+          fi
+          for required in LICENSE README.md CHANGELOG.md Package.swift \
+              Sources/Pikaid/Pikaid.swift \
+              Tests/Conformance/oracle.py \
+              Tests/PikaidTests/Fixtures/pikaid-v1.json \
+              Tests/PikaidTests/Fixtures/pikaid-conformance-v1.json; do
+            if ! printf '%s\n' "$entries" | grep -qx "pikaid-swift/$required"; then
+              echo "::error::source archive is missing $required"
+              exit 1
+            fi
+          done
+
+      - name: Assert archive contents are byte-identical to the checkout
+        run: |
+          archive="$RUNNER_TEMP/pikaid-swift.zip"
+          extract="$RUNNER_TEMP/hygiene-extract"
+          rm -rf "$extract"
+          mkdir -p "$extract"
+          unzip -q "$archive" -d "$extract"
+          for path in Tests/PikaidTests/Fixtures/pikaid-v1.json \
+              Tests/PikaidTests/Fixtures/pikaid-v1.schema.json \
+              Tests/PikaidTests/Fixtures/pikaid-conformance-v1.json \
+              Tests/Conformance/oracle.py \
+              Package.swift; do
+            cmp "$path" "$extract/pikaid-swift/$path"
+          done
+
+      - name: Assert declared platform and tools version
+        run: |
+          test -f LICENSE
+          test -s CHANGELOG.md
+          test -s README.md
+          swift package dump-package > "$RUNNER_TEMP/dump-package.json"
+          python3 - "$RUNNER_TEMP/dump-package.json" <<'PY'
+          import json
+          import sys
+
+          package = json.load(open(sys.argv[1], encoding="utf-8"))
+          platforms = {
+              entry["platformName"]: entry["version"]
+              for entry in package["platforms"]
+          }
+          assert platforms.get("macos") == "13.0", platforms
+          assert package["toolsVersion"]["_version"] == "6.0.0", package["toolsVersion"]
+          print("declared platforms:", platforms)
+          print("tools version:", package["toolsVersion"]["_version"])
+          PY
