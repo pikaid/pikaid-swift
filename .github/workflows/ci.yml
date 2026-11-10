@@ -251,7 +251,14 @@ jobs:
           swift-version: "6.1"
 
       - name: Run tests under AddressSanitizer
-        run: swift test --sanitize=address
+        run: |
+          set -euo pipefail
+          # All package tests use Swift Testing, not XCTest. On Linux the empty
+          # XCTest runner leaks from libXCTest itself (368 bytes in this run).
+          # Exclude only that unused runner; keep ASan and LeakSanitizer enabled
+          # for the complete Swift Testing suite and fail if no tests execute.
+          swift test --sanitize=address --disable-xctest 2>&1 | tee "$RUNNER_TEMP/asan-tests.log"
+          grep -Eq 'Test run with [1-9][0-9]* tests passed' "$RUNNER_TEMP/asan-tests.log"
 
   coverage:
     name: Coverage (ubuntu-latest, Swift 6.1)
