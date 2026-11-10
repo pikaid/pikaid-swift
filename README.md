@@ -1,69 +1,46 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/pikaid/pikaid-specs/v1.0.4/logo.png" alt="pikaid" width="300" />
+  <a href="https://github.com/pikaid/pikaid-specs">
+    <img src="https://raw.githubusercontent.com/pikaid/pikaid-specs/v1.0.4/logo.png" alt="pikaid" width="300">
+  </a>
 </p>
 
 <p align="center">
   <strong>Small · Sortable · Secure ID generator</strong>
 </p>
 
-# pikaid — Official Swift Implementation
+<div align="center">
 
-**Status: implemented and validated, not yet released.** This repository is
-private, has no tagged release, no published package, and no stable public API
-guarantee yet. The current source is consumable only by branch or commit
-reference with repository access; it is not a published Swift package.
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Swift](https://img.shields.io/badge/language-Swift-F05138.svg)](https://github.com/pikaid/pikaid-swift)
+[![CI](https://github.com/pikaid/pikaid-swift/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pikaid/pikaid-swift/actions/workflows/ci.yml)
+[![Official implementation](https://img.shields.io/badge/official-implementation-2e7d32.svg)](https://github.com/pikaid/pikaid-specs)
+[![Specification 1.0.4](https://img.shields.io/badge/spec-1.0.4-4b56a6.svg)](https://github.com/pikaid/pikaid-specs/tree/v1.0.4)
 
-This repository contains the **official Swift implementation** of
-[pikaid](https://github.com/pikaid), a compact, chronologically sortable
-identifier format for databases, APIs, and distributed systems.
+</div>
 
-The pikaid identifier format is immutable and unversioned: **26 lowercase
-Base36 characters** with a **17-byte binary representation**.
+**pikaid** is the **official Swift implementation** of a compact, chronologically sortable, collision-resistant identifier format for databases, APIs, and distributed systems.
 
-```text
-0s44we8002loz3po6mcf6vsn23
-└──┬──┘└─────────┬────────┘
-   7 chars      19 chars
- timestamp    96 bits of randomness
-```
+This is the immutable, unversioned [pikaid format](https://github.com/pikaid/pikaid-specs/tree/v1.0.4), documented in specification revision **1.0.4**.
 
-## Canonical specification
+## ✨ Why pikaid?
 
-The authoritative definition is [pikaid specification revision
-1.0.4](https://github.com/pikaid/pikaid-specs/tree/v1.0.4), pinned in this
-repository at commit `17014d76f568c3ac9f9ce2927c1a018fdbc36d1d`.
+- **Short:** Compact, readable IDs for URLs, logs, and API resources.
+- **Sortable:** Lexicographically ordered by timestamp, with **one-second precision**.
+- **Collision-resistant:** 96 bits of cryptographic randomness make collisions extremely unlikely, never impossible.
+- **Storage-friendly:** Use `BINARY(17)` or readable `CHAR(26)`.
+- **Distributed-friendly:** No central sequence generator or coordination required.
 
-This implementation follows the specification. The official
-[PHP v1.2.0 conformance vectors](https://github.com/pikaid/pikaid-php) are used
-as independent interoperability fixtures, not as an API template.
+## 🧬 Identifier format
 
-### Independent conformance table
+A pikaid contains **26 lowercase Base36 characters**: a **7-character Unix-seconds timestamp** followed by **19 characters encoding 96 bits of cryptographic randomness**. Its binary form is **17 bytes**: 5 unsigned big-endian timestamp bytes followed by 12 randomness bytes.
 
-`Tests/Conformance/oracle.py` is a pure-Python big-integer reference
-implementation. It does **not** import, execute, or read the Swift sources. It
-generates and verifies the checked-in table
-`Tests/PikaidTests/Fixtures/pikaid-conformance-v1.json`, which is pinned to:
+![Identifier structure](https://raw.githubusercontent.com/pikaid/pikaid-specs/v1.0.4/structure.svg)
 
-- specification revision `1.0.4` at commit
-  `17014d76f568c3ac9f9ce2927c1a018fdbc36d1d`;
-- official PHP `v1.2.0` fixture digest
-  `b0c9dfdd063613424414fef5c9065fbd2f81d645d0ab42b34e27cde715613500`;
-- official schema digest
-  `4441d4dbaa6c5450ae9cbfb2438c53bc0421bba2b7fcc9ef9b158e5d1de0759e`.
+> **Ordering:** Different seconds sort chronologically. Within the same second, randomness—not issuance order—decides the order.
 
-The table contains 38 valid rows, 31 invalid string rows, 8 invalid binary
-rows, and an ordering list derived from the valid rows. It includes `0`,
-`2^40 - 1`, `36^7 - 1`, `2^96`, `36^19 - 1`, leading-zero randomness, CRLF/LF,
-NUL, and zero-width Unicode cases. Each valid row is checked through every
-public entrypoint and representation. The oracle also performs a tamper
-self-test, so a corrupted table or digest fails verification before the Swift
-suite runs.
+> **Security:** These are identifiers, **not secrets**, session credentials, authentication tokens, or API keys.
 
-```sh
-python3 Tests/Conformance/oracle.py --check
-```
-
-## Requirements
+## ⚙️ Requirements
 
 - Swift 6.0 or newer
 - macOS 13 or newer, or Linux
@@ -72,10 +49,9 @@ The package has no external dependencies. On Apple platforms randomness is read
 from `SecRandomCopyBytes`; elsewhere it uses Swift's system cryptographic
 generator (`getrandom(2)` on Linux).
 
-## Installation
+## 📦 Installation
 
-Add the package to `Package.swift` (the repository must be accessible to the
-consumer; it is not a public package registry entry):
+This is a public Swift Package Manager Git dependency (not a package-registry release). In your application's `Package.swift`, add:
 
 ```swift
 dependencies: [
@@ -83,7 +59,7 @@ dependencies: [
 ]
 ```
 
-No tagged release exists yet, so a branch or revision reference is required.
+Use the branch or pin a specific commit for reproducible builds.
 Pin a commit for reproducible builds; the dependency will move to a version
 requirement only if a release is published.
 
@@ -94,7 +70,77 @@ requirement only if a release is published.
 )
 ```
 
-## Usage
+For an executable target, save the quick start below in `Sources/main.swift` and run `swift run`. To validate the package directly from its repository, use:
+
+```sh
+git clone https://github.com/pikaid/pikaid-swift.git
+cd pikaid-swift
+swift test
+```
+
+## 🚀 Basic Usage
+
+In your Swift Package Manager executable target, use this complete example:
+
+```swift
+import Pikaid
+
+let id = try Pikaid.generate()
+assert(Pikaid.isValid(id.string))
+let binary = id.binary
+assert(binary.count == 17)
+let restored = try Pikaid(binary: binary)
+assert(restored == id)
+print(id.string, id.timestamp)
+```
+
+Values vary on each run because generation uses the operating-system CSPRNG.
+
+## 💡 Example Use Case
+
+Use pikaid to identify **users, orders, invoices, uploads, events, and API resources**. Independent services can generate compact IDs without a shared counter, while timestamp-based ordering helps with indexing, sorting, and logs.
+
+## 📚 Canonical specification
+
+- [Canonical specification](https://github.com/pikaid/pikaid-specs)
+- [Revision 1.0.4](https://github.com/pikaid/pikaid-specs/tree/v1.0.4)
+
+Specification revisions describe the format; they do not change the encoded identifiers.
+
+## 🧩 API Reference
+
+### Specification contract → public API
+
+| Specification concept | Public API |
+| --------------------- | ---------- |
+| 26-character canonical string | `Pikaid.string`, `Pikaid(string:)`, `description`, `Codable` |
+| 17-byte binary `[5 BE timestamp][12 randomness]` | `Pikaid.binary`, `Pikaid.binaryBytes`, `Pikaid(binary:)` |
+| 7-digit timestamp `0...36^7-1` | `Pikaid.timestamp`, `Pikaid.generate(timestamp:)`, `Pikaid(timestamp:randomness:)` |
+| 19-digit / 96-bit randomness | `Pikaid.randomness`, `Pikaid.randomnessHex` |
+| Strict rejection without coercion | Throwing initializers, `PikaidError` |
+| Shape vs semantic validation | `Pikaid.isWellFormed(_:)` vs `Pikaid.isValid(_:)` |
+| Timestamp-then-randomness order | `Comparable`, canonical string order, unsigned binary order |
+| UTC whole-second timestamp | `Pikaid.timestamp` is Unix seconds; map with `Date(timeIntervalSince1970:)` |
+
+The implementation deliberately exposes no separate `Date` property or
+generation-order counter: the format has one-second precision and same-second
+order is defined by randomness, not creation time.
+
+### Members
+
+| Member | Description |
+| ------ | ----------- |
+| `Pikaid(string:)` | Parse and fully validate a 26-character string |
+| `Pikaid(binary:)` | Parse and validate 17 `Data` or `[UInt8]` bytes |
+| `Pikaid(timestamp:randomness:)` | Build from components; range and length checked |
+| `Pikaid.generate()` / `generate(timestamp:)` | Generate from the CSPRNG |
+| `generateBinary()` / `generateBinary(timestamp:)` | Generate the 17-byte form |
+| `Pikaid.isValid(_:)` | Boolean full validation |
+| `Pikaid.isWellFormed(_:)` | Boolean shape check only |
+| `.string`, `.binary`, `.binaryBytes` | Canonical representations |
+| `.timestamp`, `.randomness`, `.randomnessHex` | Decoded fields |
+| `.maximumTimestamp` | `78_364_164_095` (`36^7 - 1`) |
+| `.stringLength`, `.binaryLength` | `26` and `17` |
 
 ### Generate
 
@@ -132,10 +178,10 @@ let rebuilt = try Pikaid(
     randomness: fromString.randomness
 )
 
-#expect(fromString == fromBinary)
-#expect(fromString == fromBytes)
-#expect(fromString == rebuilt)
-#expect(fromString.description == fromString.string)
+assert(fromString == fromBinary)
+assert(fromString == fromBytes)
+assert(fromString == rebuilt)
+assert(fromString.description == fromString.string)
 ```
 
 `binary` returns `Data` and `binaryBytes` returns `[UInt8]`; both use the
@@ -181,48 +227,15 @@ forms.
 decoding:
 
 ```swift
+import Foundation
+
 let sample = try Pikaid(string: "0s44we8002loz3po6mcf6vsn23")
 let data = try JSONEncoder().encode(sample)   // "\"0s44we8002loz3po6mcf6vsn23\""
 let decoded = try JSONDecoder().decode(Pikaid.self, from: data)
-#expect(decoded == sample)
+assert(decoded == sample)
 ```
 
-## API summary
-
-### Specification contract → public API
-
-| Specification concept | Public API |
-| --------------------- | ---------- |
-| 26-character canonical string | `Pikaid.string`, `Pikaid(string:)`, `description`, `Codable` |
-| 17-byte binary `[5 BE timestamp][12 randomness]` | `Pikaid.binary`, `Pikaid.binaryBytes`, `Pikaid(binary:)` |
-| 7-digit timestamp `0...36^7-1` | `Pikaid.timestamp`, `Pikaid.generate(timestamp:)`, `Pikaid(timestamp:randomness:)` |
-| 19-digit / 96-bit randomness | `Pikaid.randomness`, `Pikaid.randomnessHex` |
-| Strict rejection without coercion | Throwing initializers, `PikaidError` |
-| Shape vs semantic validation | `Pikaid.isWellFormed(_:)` vs `Pikaid.isValid(_:)` |
-| Timestamp-then-randomness order | `Comparable`, canonical string order, unsigned binary order |
-| UTC whole-second timestamp | `Pikaid.timestamp` is Unix seconds; map with `Date(timeIntervalSince1970:)` |
-
-The implementation deliberately exposes no separate `Date` property or
-generation-order counter: the format has one-second precision and same-second
-order is defined by randomness, not creation time.
-
-### Members
-
-| Member | Description |
-| ------ | ----------- |
-| `Pikaid(string:)` | Parse and fully validate a 26-character string |
-| `Pikaid(binary:)` | Parse and validate 17 `Data` or `[UInt8]` bytes |
-| `Pikaid(timestamp:randomness:)` | Build from components; range and length checked |
-| `Pikaid.generate()` / `generate(timestamp:)` | Generate from the CSPRNG |
-| `generateBinary()` / `generateBinary(timestamp:)` | Generate the 17-byte form |
-| `Pikaid.isValid(_:)` | Boolean full validation |
-| `Pikaid.isWellFormed(_:)` | Boolean shape check only |
-| `.string`, `.binary`, `.binaryBytes` | Canonical representations |
-| `.timestamp`, `.randomness`, `.randomnessHex` | Decoded fields |
-| `.maximumTimestamp` | `78_364_164_095` (`36^7 - 1`) |
-| `.stringLength`, `.binaryLength` | `26` and `17` |
-
-## Security and ordering caveats
+## 🔄 Order Guarantee
 
 - pikaid values are **not secrets**, authentication tokens, or authorization
   mechanisms. The timestamp is readable from the identifier.
@@ -238,7 +251,23 @@ order is defined by randomness, not creation time.
 - For text storage use a binary or verified ASCII-compatible collation. Default
   database collations are not automatically safe for bytewise ordering.
 
-## Conformance and testing
+## 🛢 Storage Recommendations
+
+| Representation | Size | Recommended for |
+| --- | ---: | --- |
+| **BINARY(17)** | 17 bytes | Compact primary keys and indexes |
+| **CHAR(26)** | 26 characters | Readable SQL, debugging, URLs, and logs |
+
+Use an **ASCII bytewise/binary collation** for text columns (for example, `ascii_bin` on MariaDB/MySQL). Case-insensitive or locale-aware sorting is not a substitute for canonical bytewise comparison.
+
+## ✅ Verification and release status
+
+The [CI workflow](https://github.com/pikaid/pikaid-swift/actions/workflows/ci.yml) runs Swift tests, pinned automated conformance checks, and package and sanitizer checks. To run the native checks locally from a checkout, use `swift test`.
+
+**Automated passing tests are not a security certification.** The independent CSPRNG source and failure-path audits (`P-GENERATE-RNG-SOURCE` and `P-GENERATE-RNG-FAILURE`) still require separate human evidence.
+
+<details>
+<summary>Platform, tooling, and conformance details</summary>
 
 The test suite is written with [Swift Testing](https://github.com/swiftlang/swift-testing)
 and covers:
@@ -344,6 +373,35 @@ swift test -Xswiftc -plugin-path \
   -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing
 ```
 
-## License
+</details>
 
-MIT. See [LICENSE](LICENSE).
+Registry publication is not implied by a green CI: use the Git dependency documented above.
+
+## 🤝 Contributing
+
+Contributions are always welcome! 💙
+
+Whether you're fixing a typo, improving documentation, adding tests, or making pikaid even better, every contribution is appreciated.
+
+**Want to help? Here's how:**
+
+- 🐛 **Found a bug?** [Open an issue](https://github.com/pikaid/pikaid-swift/issues) with clear reproduction steps.
+- 💡 **Have an idea?** Start with an issue before making major changes.
+- 🛠️ **Ready to contribute?** Open a pull request explaining your changes.
+- 🧪 **Keep it tested.** Add meaningful regression tests for behavior changes and follow the existing conventions.
+- ✅ **Make sure CI passes.** All required checks must be green before a pull request is merged. No shortcuts!
+
+**One important rule:** pikaid's identifier format is immutable. Contributions must preserve the [canonical specification (revision 1.0.4)](https://github.com/pikaid/pikaid-specs/tree/v1.0.4).
+
+🔐 **Found a security vulnerability?** Report it privately using GitHub's security reporting (when available), or [contact the maintainer](mailto:larananas.dev@proton.me)—not through a public issue.
+
+**Every improvement matters, big or small. Thanks for helping make pikaid better!** 🐇
+
+## 📄 License
+
+The implementation is available under the [MIT License](LICENSE).
+
+## ✉️ Contact
+
+For licensing or project-related questions: [larananas.dev@proton.me](mailto:larananas.dev@proton.me).
+
